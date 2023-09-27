@@ -10,7 +10,7 @@ class ContrastiveLoss(nn.Module):
 
     def forward(self, x0, x1, y):
         # cosine similarity
-        cos_func = torch.nn.CosineSimilarity(dim=0)
+        cos_func = torch.nn.CosineSimilarity(dim=1)
         cosine = cos_func(x0, x1)
 
         loss_similarity = 1 - cosine
