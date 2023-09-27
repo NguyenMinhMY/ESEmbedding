@@ -17,5 +17,6 @@ class ContrastiveLoss(nn.Module):
         loss_dissimlarity = torch.clamp(cosine - self.margin, min=0.0)
 
         loss = (1 - y)*loss_similarity + y*loss_dissimlarity
+        loss = torch.sum(loss) / x0.size()[0]
 
         return loss
