@@ -4,18 +4,18 @@ import torch.nn as nn
 
 class ContrastiveLoss(nn.Module):
 
-    def __init__(self, margin=1.0):
+    def __init__(self, margin=0.0):
         super(ContrastiveLoss, self).__init__()
         self.margin = margin
 
     def forward(self, x0, x1, y):
-        # euclidian distance
-        diff = x0 - x1
-        dist_sq = torch.sum(torch.pow(diff, 2), 1)
-        dist = torch.sqrt(dist_sq)
-    
-        mdist = self.margin - dist
-        dist = torch.clamp(mdist, min=0.0)
-        loss = y * dist_sq + (1 - y) * torch.pow(dist, 2)
-        loss = torch.sum(loss) / 2.0 / x0.size()[0]
+        # cosine similarity
+        cos_func = torch.nn.CosineSimilarity(dim=0)
+        cosine = cos_func(x0, x1)
+
+        loss_similarity = 1 - cosine
+        loss_dissimlarity = torch.clamp(cosine - self.margin, min=0.0)
+
+        loss = (1 - y)*loss_similarity + y*loss_dissimlarity
+
         return loss
