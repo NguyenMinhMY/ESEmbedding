@@ -1,12 +1,13 @@
 import torch
 import torch.nn as nn
-
+import math
 
 class ContrastiveLoss(nn.Module):
 
     def __init__(self, margin=0.0):
         super(ContrastiveLoss, self).__init__()
-        self.margin = margin
+        # self.margin = margin
+        self.margin = math.cos(math.pi / 5)
 
     def forward(self, x0, x1, y):
         # cosine similarity
