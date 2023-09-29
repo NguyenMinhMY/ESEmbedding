@@ -4,7 +4,7 @@ import torch.nn as nn
 
 class ContrastiveLoss(nn.Module):
 
-    def __init__(self, margin=1.0):
+    def __init__(self, margin=10.0):
         super(ContrastiveLoss, self).__init__()
         self.margin = margin
 
@@ -16,6 +16,6 @@ class ContrastiveLoss(nn.Module):
     
         mdist = self.margin - dist
         dist = torch.clamp(mdist, min=0.0)
-        loss = y * dist_sq + (1 - y) * torch.pow(dist, 2)
+        loss = (1 - y) * dist_sq + y * torch.pow(dist, 2)
         loss = torch.sum(loss) / 2.0 / x0.size()[0]
         return loss
