@@ -37,12 +37,13 @@ class PLESEMbedding(pl.LightningModule):
         self.valid_data = ESDataset(cfg['val_dataset'])
     
     def training_step(self, batch, batch_idx):
-        anchors, samples, y = batch
+        anchors, b_pos_samples, b_neg_samples = batch
         
         anchors_out = self.model(anchors)
-        samples_out = self.model(samples)
+        b_pos_samples_out = [self.model(samples) for samples in b_pos_samples]
+        b_neg_samples_out = [self.model(samples) for samples in b_neg_samples]
         
-        loss = self.criterion(anchors_out, samples_out, y)
+        loss = self.criterion(anchors_out, b_pos_samples_out, b_neg_samples_out)
         
         log_dict = {
             "train_loss": {"value": loss, "on_step": True, "on_epoch": True, "prog_bar": True, "logger": True},
@@ -56,12 +57,13 @@ class PLESEMbedding(pl.LightningModule):
         return loss
     
     def validation_step(self, batch, batch_idx):
-        anchors, samples, y = batch
+        anchors, b_pos_samples, b_neg_samples = batch
         
         anchors_out = self.model(anchors)
-        samples_out = self.model(samples)
+        b_pos_samples_out = [self.model(samples) for samples in b_pos_samples]
+        b_neg_samples_out = [self.model(samples) for samples in b_neg_samples]
         
-        loss = self.criterion(anchors_out, samples_out, y)
+        loss = self.criterion(anchors_out, b_pos_samples_out, b_neg_samples_out)
         
         log_dict = {
             "valid_loss": 
