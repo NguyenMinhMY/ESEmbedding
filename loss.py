@@ -23,16 +23,16 @@ class ContrastiveLoss(nn.Module):
 
         # return loss
 
-        # sigmoid = torch.nn.Sigmoid()
+        sigmoid = torch.nn.Sigmoid()
 
         pos_centroids = torch.stack([self.get_centroids(embs) for embs in pos_outs], dim=0) # (B,D)
         neg_outs = torch.stack(neg_outs, dim=0) # (B,4,D)
 
         S_pos = self.cacl_similarity(anchors, pos_centroids, dim=1) # (B,1)
-        # S_pos = sigmoid(S_pos)
+        S_pos = sigmoid(S_pos)
 
         S_negs = self.cacl_similarity(anchors.unsqueeze(1), neg_outs, dim=2) # (B,4,1)
-        # S_negs = sigmoid(S_negs)
+        S_negs = sigmoid(S_negs)
 
         loss = 1 - S_pos + torch.max(S_negs, dim=1).values
         return torch.sum(loss)/anchors.size()[0]
