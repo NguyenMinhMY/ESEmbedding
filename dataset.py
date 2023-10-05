@@ -52,15 +52,14 @@ class ESDataset(Dataset):
             idx = idx.item()
 
         anchor, emo = self.all_samples[idx]
-        # emo = anchor[1]
+        emo_label = self._ID2EMO[emo]
 
         # Choose 4 samples randomly have same emotion with anchor
-        pos_samples = list(random.choices(self.samples[emo], k=4))
-        # pos_samples = [(sample, emo) for sample in pos_samples]
+        pos_samples = list(random.choices(self.samples[emo_label], k=4))
 
         # Random one sample per each of other's emotions
         neg_samples = []
-        for neg_emo in (self.samples.keys() - [self._ID2EMO(emo)]):
+        for neg_emo in (self.samples.keys() - [self._ID2EMO[emo]]):
             sample_idx = np.random.randint(0, len(self.samples[neg_emo]))
             sample = self.samples[neg_emo][sample_idx]
             neg_samples.append(sample)
