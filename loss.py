@@ -33,7 +33,7 @@ class ContrastiveLoss(nn.Module):
         S_negs = self.cacl_similarity(anchors, neg_outs, dim=2) # (B,4,1)
         S_negs = sigmoid(S_negs)
 
-        loss = 1 - S_pos + torch.max(S_negs, dim=1)
+        loss = 1 - S_pos + torch.max(S_negs, dim=1).values
         return torch.sum(loss)/anchors.size()[0]
 
     def get_centroids(self, embeddings):
