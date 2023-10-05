@@ -38,7 +38,6 @@ class PLESEMbedding(pl.LightningModule):
     
     def training_step(self, batch, batch_idx):
         anchors, b_pos_samples, b_neg_samples = batch
-        
         anchors_out = self.model(anchors)
         b_pos_samples_out = [self.model(samples) for samples in b_pos_samples]
         b_neg_samples_out = [self.model(samples) for samples in b_neg_samples]

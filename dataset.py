@@ -45,7 +45,7 @@ class ESDataset(Dataset):
         )
 
     def __len__(self):
-        return len(self.samples)
+        return len(self.all_samples)
 
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
@@ -79,7 +79,7 @@ class Collate:
         anchors, b_pos_samples, b_neg_samples = [], [], []
         
         for anchor, pos_samples, neg_samples in batch:
-            
+
             anchor, _ = librosa.load(anchor, sr=self.sr)
             pos_samples, _ = zip(*[librosa.load(pos_sample, sr=self.sr) for pos_sample in pos_samples])
             neg_samples, _ = zip(*[librosa.load(neg_sample, sr=self.sr) for neg_sample in neg_samples])
