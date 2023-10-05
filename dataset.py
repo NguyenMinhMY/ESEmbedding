@@ -1,4 +1,5 @@
 import os
+import random
 import torch
 import librosa
 import numpy as np
@@ -10,8 +11,16 @@ class ESDataset(Dataset):
     
     def __init__(self, config):
 
-        EMO = {'angry': 0, 'happy': 1, 'neutral': 2, 'sad': 3, 'surprise': 4}
-        self.samples = []
+        self._EMO = {'angry': 0, 'happy': 1, 'neutral': 2, 'sad': 3, 'surprise': 4}
+        self._ID2EMO = {key: value for value, key in self._EMO.items()}
+        self.all_samples = []
+        self.samples = {
+            'angry': [],
+            'happy': [],
+            'neutral': [],
+            'sad': [],
+            'surprise': []
+        }
         
         for emo in config['dirs'].keys():
             
@@ -24,7 +33,8 @@ class ESDataset(Dataset):
                 fpath = os.path.join(emo_dir, f)
                 if not os.path.isfile(fpath):
                     continue
-                self.samples.append((fpath, EMO[emo]))
+                self.all_samples.append((fpath, self._EMO[emo]))
+                self.samples[emo].append(fpath)
         
         self.loader = DataLoader(
             self, 
@@ -40,11 +50,23 @@ class ESDataset(Dataset):
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
             idx = idx.item()
-        anchor = self.samples[idx]
-        sample_idx = np.random.randint(0, len(self.samples))
-        sample = self.samples[sample_idx]
-        # return: path1, emo1, path2, emo2
-        return anchor[0], anchor[1], sample[0], sample[1]
+
+        anchor, emo = self.all_samples[idx]
+        # emo = anchor[1]
+
+        # Choose 4 samples randomly have same emotion with anchor
+        pos_samples = list(random.choices(self.samples[emo], k=4))
+        # pos_samples = [(sample, emo) for sample in pos_samples]
+
+        # Random one sample per each of other's emotions
+        neg_samples = []
+        for neg_emo in (self.samples.keys() - [self._ID2EMO(emo)]):
+            sample_idx = np.random.randint(0, len(self.samples[neg_emo]))
+            sample = self.samples[neg_emo][sample_idx]
+            neg_samples.append(sample)
+
+        
+        return anchor, pos_samples, neg_samples
 
     
 class Collate:
@@ -54,23 +76,23 @@ class Collate:
         
     def __call__(self, batch):
         
-        l_anchor_max, l_sample_max = 0, 0
-        anchors, anchors_emo, samples, samples_emo = [], [], [], []
+        l_anchor_max, l_pos_max, l_neg_max = 0, 0, 0
+        anchors, b_pos_samples, b_neg_samples = [], [], []
         
-        for anchor, anchor_emo, sample, sample_emo in batch:
+        for anchor, pos_samples, neg_samples in batch:
             
             anchor, _ = librosa.load(anchor, sr=self.sr)
-            sample, _ = librosa.load(sample, sr=self.sr)
+            pos_samples, _ = zip(*[librosa.load(pos_sample, sr=self.sr) for pos_sample in pos_samples])
+            neg_samples, _ = zip(*[librosa.load(neg_sample, sr=self.sr) for neg_sample in neg_samples])
             
             anchors.append(torch.tensor(anchor))
-            anchors_emo.append(anchor_emo)
-            samples.append(torch.tensor(sample))
-            samples_emo.append(sample_emo)
+            b_pos_samples.append([torch.tensor(sample) for sample in pos_samples])
+            b_neg_samples.append([torch.tensor(sample) for sample in neg_samples])
 
             l_anchor_max = max(l_anchor_max, len(anchor))
-            l_sample_max = max(l_sample_max, len(sample))
+            l_pos_max = max(l_pos_max, len(max(pos_samples, key=len)))
+            l_neg_max = max(l_neg_max, len(max(neg_samples, key=len)))
         
-        y = []
         
         for idx in range(len(anchors)):
             
@@ -78,15 +100,25 @@ class Collate:
             pad = (0, l_anchor_max - ai)
             anchors[idx] = F.pad(anchors[idx], pad)
             
-            si = samples[idx].size(0)
-            pad = (0, l_sample_max - si)
-            samples[idx] = F.pad(samples[idx], pad)
+            for i, sample in enumerate(b_pos_samples[idx]):
+                si = sample.size(0)
+                pad = (0, l_pos_max - si)
+                b_pos_samples[idx][i] = F.pad(b_pos_samples[idx][i], pad)
+
+            b_pos_samples[idx] = torch.stack(b_pos_samples[idx], dim=0)
+
+            for i, sample in enumerate(b_neg_samples[idx]):
+                si = sample.size(0)
+                pad = (0, l_pos_max - si)
+                b_neg_samples[idx][i] = F.pad(b_neg_samples[idx][i], pad)
             
-            y.append(min(abs(anchors_emo[idx] - samples_emo[idx]), 1))
+            b_neg_samples[idx] = torch.stack(b_neg_samples[idx], dim=0)
+
+
+            
 
         anchors = torch.stack(anchors)
-        samples = torch.stack(samples)
-        y = torch.tensor(y)
+
         
-        return anchors, samples, y
+        return anchors, b_pos_samples, b_neg_samples
 
