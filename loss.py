@@ -22,6 +22,7 @@ class ContrastiveLoss(nn.Module):
         # loss = torch.sum(loss) / x0.size()[0]
 
         # return loss
+
         sigmoid = torch.nn.Sigmoid()
 
         pos_centroids = torch.stack([self.get_centroids(embs) for embs in pos_outs], dim=0) # (B,D)
@@ -30,7 +31,7 @@ class ContrastiveLoss(nn.Module):
         S_pos = self.cacl_similarity(anchors, pos_centroids, dim=1) # (B,1)
         S_pos = sigmoid(S_pos)
 
-        S_negs = self.cacl_similarity(anchors, neg_outs, dim=2) # (B,4,1)
+        S_negs = self.cacl_similarity(anchors.unsqueeze(1), neg_outs, dim=2) # (B,4,1)
         S_negs = sigmoid(S_negs)
 
         loss = 1 - S_pos + torch.max(S_negs, dim=1).values
@@ -45,4 +46,4 @@ class ContrastiveLoss(nn.Module):
             sim = cosine_func(x0, x1)
             return sim
         except:
-            raise "Inputs not match dims"
+            raise f"Inputs not match dims: x0's size is {x0.size()} - x1's size is {x1.size()}"
