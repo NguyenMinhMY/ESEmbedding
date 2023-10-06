@@ -10,6 +10,9 @@ class ContrastiveLoss(nn.Module):
         # self.margin = margin
         self.margin = math.cos(math.pi/5)
 
+        self.w = torch.nn.Parameter(torch.abs(torch.randn(1,)))
+        self.b = torch.nn.Parameter(torch.randn(1,))
+
 
     def forward(self, anchors, pos_outs, neg_outs):
         # cosine similarity
@@ -35,7 +38,8 @@ class ContrastiveLoss(nn.Module):
 
         S_negs = self.cacl_similarity(anchors.unsqueeze(1), neg_outs, dim=2) # (B,4,1)
         # S_negs = sigmoid(S_negs)
-        loss_dissims = torch.clamp(S_negs - self.margin, min=0.0)
+        margin = self.w * self.margin + self.b
+        loss_dissims = torch.clamp(S_negs - margin, min=0.0)
 
         loss = loss_sim + torch.max(loss_dissims, dim=1).values
         return torch.sum(loss)/anchors.size()[0]
@@ -46,7 +50,7 @@ class ContrastiveLoss(nn.Module):
     def cacl_similarity(self, x0 ,x1, dim):
         try:
             cosine_func = torch.nn.CosineSimilarity(dim=dim)
-            sim = cosine_func(x0, x1)
+            sim = self.w * cosine_func(x0, x1) + self.b
             return sim
         except:
             raise f"Inputs not match dims: x0's size is {x0.size()} - x1's size is {x1.size()}"
