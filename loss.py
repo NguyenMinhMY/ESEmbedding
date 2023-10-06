@@ -10,8 +10,8 @@ class ContrastiveLoss(nn.Module):
         # self.margin = margin
         self.margin = math.cos(math.pi/5)
 
-        # self.w = torch.nn.Parameter(torch.abs(torch.randn(1,)))
-        # self.b = torch.nn.Parameter(torch.randn(1,))
+        self.w = torch.nn.Parameter(torch.abs(torch.randn(1,)))
+        self.b = torch.nn.Parameter(torch.randn(1,))
 
 
     def forward(self, anchors, pos_outs, neg_outs):
