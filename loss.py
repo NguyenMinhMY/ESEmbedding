@@ -14,7 +14,7 @@ class ContrastiveLoss(nn.Module):
         self.b = torch.nn.Parameter(torch.randn(1,))
 
 
-    def forward(self, anchors, pos_outs, neg_outs):
+    def forward(self, signal_list, batch_size):
         '''
         1-Pair Loss - Cosine
 
@@ -48,21 +48,29 @@ class ContrastiveLoss(nn.Module):
         '''
 
         # N-pair loss - Cosine + logarit
-        pos_centroids = torch.stack([self.get_centroids(embs) for embs in pos_outs], dim=0) # (B,D)
-        neg_outs = torch.stack(neg_outs, dim=0) # (B,4,D)
+        loss = 0.0
+        for idx in range(0, batch_size):
+            anchor_idx = 9 * idx
+            anchor = signal_list[anchor_idx]
 
-        S_pos = self.cacl_similarity(anchors, pos_centroids, dim=1) # (B,1)
-        S_negs = self.cacl_similarity(anchors.unsqueeze(1), neg_outs, dim=2) # (B,4,1)
+            pos_range = (anchor_idx + 1, anchor_idx + 5)
+            pos_samples = signal_list[pos_range[0] : pos_range[1]]
+            pos_centroid = torch.mean(pos_samples, dim=-1)
 
-        S_pos = torch.exp(S_pos) # (B,1)
-        S_negs = torch.sum(torch.exp(S_negs), dim=1) # (B,1)
+            neg_range = (pos_range[1], pos_range[1] + 4)
+            neg_samples = signal_list[neg_range[0] : neg_range[1]]
 
-        loss = - torch.log(S_pos / (S_pos + S_negs))
-        loss = torch.sum(loss)/anchors.size()[0]
-        return loss
+            
 
-    def get_centroids(self, embeddings):
-        return torch.mean(embeddings, dim=0)
+            S_pos = self.cacl_similarity(anchor, pos_centroid, dim=-1)
+            S_pos = torch.exp(S_pos)
+
+            S_negs = self.cacl_similarity(anchor, neg_samples, dim=1)
+            S_neg = torch.sum(torch.exp(S_negs))
+
+            loss += - torch.log(S_pos / (S_pos + S_neg))
+
+        return loss / batch_size
     
     def cacl_similarity(self, x0 ,x1, dim):
         try:

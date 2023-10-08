@@ -37,12 +37,11 @@ class PLESEMbedding(pl.LightningModule):
         self.valid_data = ESDataset(cfg['val_dataset'])
     
     def training_step(self, batch, batch_idx):
-        anchors, b_pos_samples, b_neg_samples = batch
-        anchors_out = self.model(anchors)
-        b_pos_samples_out = [self.model(samples) for samples in b_pos_samples]
-        b_neg_samples_out = [self.model(samples) for samples in b_neg_samples]
+        signal_list = batch
+        signal_out = self.model(signal_list)
+        batch_size = self.cfg.train_dataset.batch_size
         
-        loss = self.criterion(anchors_out, b_pos_samples_out, b_neg_samples_out)
+        loss = self.criterion(signal_out, batch_size=batch_size)
         
         log_dict = {
             "train_loss": {"value": loss, "on_step": True, "on_epoch": True, "prog_bar": True, "logger": True},
@@ -56,13 +55,11 @@ class PLESEMbedding(pl.LightningModule):
         return loss
     
     def validation_step(self, batch, batch_idx):
-        anchors, b_pos_samples, b_neg_samples = batch
-        
-        anchors_out = self.model(anchors)
-        b_pos_samples_out = [self.model(samples) for samples in b_pos_samples]
-        b_neg_samples_out = [self.model(samples) for samples in b_neg_samples]
-        
-        loss = self.criterion(anchors_out, b_pos_samples_out, b_neg_samples_out)
+        signal_list = batch
+        signal_out = self.model(signal_list)
+        batch_size = self.cfg.val_dataset.batch_size
+
+        loss = self.criterion(signal_out, batch_size = batch_size)
         
         log_dict = {
             "valid_loss": 

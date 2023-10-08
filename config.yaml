@@ -1,6 +1,6 @@
 pretrained: 'facebook/wav2vec2-base'
 sampling_rate: 16000
-contrastive_margin: 0.8090169943749475
+contrastive_margin: 1.0
 device: 'cuda:0'
 
 train_dataset:
@@ -22,7 +22,7 @@ val_dataset:
     neutral: '.'
     sad: '.'
     surprise: '.'
-  batch_size: 8
+  batch_size: 4 
   shuffle: true
   num_workers: 4
   sr: ${sampling_rate}

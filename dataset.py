@@ -35,6 +35,10 @@ class ESDataset(Dataset):
                     continue
                 self.all_samples.append((fpath, self._EMO[emo]))
                 self.samples[emo].append(fpath)
+
+        # Suffle all samples
+        if config.shuffle:
+            random.shuffle(self.all_samples)
         
         self.loader = DataLoader(
             self, 
@@ -75,8 +79,8 @@ class Collate:
         
     def __call__(self, batch):
         
-        l_anchor_max, l_pos_max, l_neg_max = 0, 0, 0
-        anchors, b_pos_samples, b_neg_samples = [], [], []
+        max_length = 0
+        signal_list = []
         
         for anchor, pos_samples, neg_samples in batch:
 
@@ -84,40 +88,22 @@ class Collate:
             pos_samples, _ = zip(*[librosa.load(pos_sample, sr=self.sr) for pos_sample in pos_samples])
             neg_samples, _ = zip(*[librosa.load(neg_sample, sr=self.sr) for neg_sample in neg_samples])
             
-            anchors.append(torch.tensor(anchor))
-            b_pos_samples.append([torch.tensor(sample) for sample in pos_samples])
-            b_neg_samples.append([torch.tensor(sample) for sample in neg_samples])
+            signal_list.append(torch.tensor(anchor))
+            signal_list = signal_list + [torch.tensor(sample) for sample in pos_samples]
+            signal_list = signal_list + [torch.tensor(sample) for sample in neg_samples]
 
-            l_anchor_max = max(l_anchor_max, len(anchor))
-            l_pos_max = max(l_pos_max, len(max(pos_samples, key=len)))
-            l_neg_max = max(l_neg_max, len(max(neg_samples, key=len)))
+            max_length = max(max_length, 
+                             len(anchor), 
+                             len(max(pos_samples, key=len)), 
+                             len(max(neg_samples, key=len)))
         
+
+        for idx in range(signal_list):
+            sample_len = signal_list[idx].size(0)
+            pad = (0, max_length - sample_len)
+            signal_list[idx] = F.pad(signal_list[idx], pad)
+
+        signal_list = torch.stack(signal_list)    
         
-        for idx in range(len(anchors)):
-            
-            ai = anchors[idx].size(0)
-            pad = (0, l_anchor_max - ai)
-            anchors[idx] = F.pad(anchors[idx], pad)
-            
-            for i, sample in enumerate(b_pos_samples[idx]):
-                si = sample.size(0)
-                pad = (0, l_pos_max - si)
-                b_pos_samples[idx][i] = F.pad(b_pos_samples[idx][i], pad)
-
-            b_pos_samples[idx] = torch.stack(b_pos_samples[idx], dim=0)
-
-            for i, sample in enumerate(b_neg_samples[idx]):
-                si = sample.size(0)
-                pad = (0, l_pos_max - si)
-                b_neg_samples[idx][i] = F.pad(b_neg_samples[idx][i], pad)
-            
-            b_neg_samples[idx] = torch.stack(b_neg_samples[idx], dim=0)
-
-
-            
-
-        anchors = torch.stack(anchors)
-
-        
-        return anchors, b_pos_samples, b_neg_samples
+        return signal_list
 
