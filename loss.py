@@ -55,7 +55,7 @@ class ContrastiveLoss(nn.Module):
 
             pos_range = (anchor_idx + 1, anchor_idx + 5)
             pos_samples = signal_list[pos_range[0] : pos_range[1]]
-            pos_centroid = torch.mean(pos_samples, dim=-1)
+            pos_centroid = torch.mean(pos_samples, dim=0)
 
             neg_range = (pos_range[1], pos_range[1] + 4)
             neg_samples = signal_list[neg_range[0] : neg_range[1]]
