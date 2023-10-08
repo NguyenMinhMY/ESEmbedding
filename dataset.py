@@ -98,7 +98,7 @@ class Collate:
                              len(max(neg_samples, key=len)))
         
 
-        for idx in range(signal_list):
+        for idx in range(len(signal_list)):
             sample_len = signal_list[idx].size(0)
             pad = (0, max_length - sample_len)
             signal_list[idx] = F.pad(signal_list[idx], pad)
