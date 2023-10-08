@@ -60,8 +60,6 @@ class ContrastiveLoss(nn.Module):
             neg_range = (pos_range[1], pos_range[1] + 4)
             neg_samples = signal_list[neg_range[0] : neg_range[1]]
 
-            
-
             S_pos = self.cacl_similarity(anchor, pos_centroid, dim=-1)
             S_pos = torch.exp(S_pos)
 
