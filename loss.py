@@ -49,8 +49,9 @@ class ContrastiveLoss(nn.Module):
 
         # N-pair loss - Cosine + logarit
         loss = 0.0
+        samples_per_load = int(signal_list.size()[0] / batch_size)
         for idx in range(0, batch_size):
-            anchor_idx = 9 * idx
+            anchor_idx = samples_per_load * idx
             anchor = signal_list[anchor_idx]
 
             pos_range = (anchor_idx + 1, anchor_idx + 5)
