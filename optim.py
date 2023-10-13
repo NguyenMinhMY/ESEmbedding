@@ -6,7 +6,7 @@ class NoamScheduler(_LRScheduler):
     def __init__(self, optimizer, factor, model_size, warmup_steps):
         self.optimizer = optimizer
         self._step = 0
-        self.warmup_steps = warmup_steps
+        self.warmup_steps = warmup_steps    
         self.model_size = model_size
         self.factor = factor
         self._rate = 0
