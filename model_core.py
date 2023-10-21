@@ -35,7 +35,7 @@ class ESClassification(nn.Module):
                 raise FileNotFoundError("Wrong path to checkpoint")
 
     def forward(self, signals):
-        emb_features = self.emb_extractor.model(signals)
+        emb_features = self.emb_extractor(signals)
         # emb_features: (B, 768)
         x = self.hidden_proj(emb_features)
         x = self.relu(x)
