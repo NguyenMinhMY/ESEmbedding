@@ -10,6 +10,42 @@ from transformers import (
 )
 
 
+class ESClassification(nn.Module):
+    def __init__(self, config):
+        super(ESClassification, self).__init__()
+        self.config = config
+
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout2d(self.config.classifier.dropout)
+        self.softmax = nn.Softmax(dim=1)
+        self.max_pool = nn.MaxPool2d(kernel_size=self.config.classifier.pooling_kernel_size)
+        self.hidden_proj = nn.Linear(self.config.classifier.hidden_size,
+                                     self.config.classifier.project_size)
+        
+        self.out = nn.Linear(self.config.classifier.project_size,
+                             self.config.classifier.num_labels)
+        
+        self.emb_extractor = ESEmbedding(self.config)
+        if self.config.from_pretrained:
+            self.emb_extractor.load_state_dict(self.config.emb_pretrained)
+        
+
+    def forward(self, signals):
+        emb_features = self.emb_extractor(signals)
+        # emb_features: (B, 768)
+        x = self.hidden_proj(emb_features)
+        x = self.relu(x)
+        x = self.dropout(x)
+
+        x = self.out(x)
+        x = self.relu(x)
+        x = self.dropout(x)
+
+        return self.softmax(x)
+
+        
+
+
 class ESEmbedding(nn.Module):
     
     def __init__(self, config):

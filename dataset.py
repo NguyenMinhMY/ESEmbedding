@@ -106,4 +106,67 @@ class Collate:
         signal_list = torch.stack(signal_list)    
         
         return signal_list
+    
+
+class ESCDataset(Dataset):
+    def __init__(self, config):
+
+        EMO = {'angry': 0, 'happy': 1, 'neutral': 2, 'sad': 3, 'surprise': 4}
+        self.samples = []
+        
+        for emo in config['dirs'].keys():
+            
+            emo_dir = config['dirs'][emo]
+            if not os.path.isdir(emo_dir):
+                raise FileNotFoundError(f'Cannot find the given directory: {emo_dir}')
+            
+            files = os.listdir(emo_dir)
+            for f in files:
+                fpath = os.path.join(emo_dir, f)
+                if not os.path.isfile(fpath):
+                    continue
+                self.samples.append((fpath, EMO[emo]))
+        
+        self.loader = DataLoader(
+            self, 
+            batch_size=config.batch_size, 
+            shuffle=config.shuffle,
+            num_workers=config.num_workers,
+            collate_fn=CollateClassification(config.sr),
+        )
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.item()
+        sample = self.samples[idx]
+        # return: path, emo
+        return sample[0], sample[1]
+    
+class CollateClassification:
+    def __init__(self, sr):
+        self.sr = sr
+        
+    def __call__(self, batch):
+        
+        l_sample_max = 0
+        samples, labels = [], []
+        
+        for sample, sample_emo in batch:
+            sample, _ = librosa.load(sample, sr=self.sr)
+            samples.append(torch.tensor(sample))
+            labels.append(torch.tensor(sample_emo))
+            l_sample_max = max(l_sample_max, len(sample))
+        
+        for idx in range(len(samples)):
+            si = samples[idx].size(0)
+            pad = (0, l_sample_max - si)
+            samples[idx] = F.pad(samples[idx], pad)
+
+        samples = torch.stack(samples)
+        labels = torch.stack(labels)
+        
+        return samples, labels
 

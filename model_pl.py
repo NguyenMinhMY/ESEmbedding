@@ -1,19 +1,20 @@
 import os
 import torch
-from dataset import ESDataset
+import torchmetrics
+from torch.nn import CrossEntropyLoss
+from dataset import ESDataset, ESCDataset
 from torch.optim import AdamW
 import lightning.pytorch as pl
 from optim import NoamScheduler
-from loss import ContrastiveLoss
+from loss import ContrastiveLoss, ContrastiveLossNPair
 from omegaconf import DictConfig
-from model_core import ESEmbedding
+from model_core import ESEmbedding, ESClassification
 
 
 
 class PLESEMbedding(pl.LightningModule):
     def __init__(self, cfg: DictConfig):
         super(PLESEMbedding, self).__init__()
-        
         self.cfg = cfg
         self.model = ESEmbedding(cfg)
             
@@ -31,7 +32,7 @@ class PLESEMbedding(pl.LightningModule):
             warmup_steps=cfg.optimizer.warmup_steps,
         )
         
-        self.criterion = ContrastiveLoss(cfg['contrastive_margin'])
+        self.criterion = ContrastiveLossNPair(cfg['contrastive_margin'])
         
         self.train_data = ESDataset(cfg['train_dataset'])
         self.valid_data = ESDataset(cfg['val_dataset'])
@@ -103,3 +104,71 @@ class PLESEMbedding(pl.LightningModule):
                 "monitor": "val_loss",
             },
         }
+    
+class PLESClassification(PLESEMbedding):
+    def __init__(self, cfg: DictConfig):
+        super(PLESClassification, self).__init__(cfg)
+
+        self.cfg = cfg
+        self.model = ESClassification(cfg)
+
+        self.criterion = CrossEntropyLoss()
+        self.precision = torchmetrics.Precision(task="multiclass", average=cfg['metrics_avg_type'], num_classes=5)
+        self.recall = torchmetrics.Recall(task="multiclass", average=cfg['metrics_avg_type'], num_classes=5)
+        self.f1 = torchmetrics.F1Score(task="multiclass", average=cfg['metrics_avg_type'], num_classes=5)
+
+        self.train_data = ESCDataset(cfg['train_dataset'])
+        self.valid_data = ESCDataset(cfg['val_dataset'])
+
+    def training_step(self, batch, batch_idx):
+        signals, labels = batch
+
+        output = self.model(signals)
+        loss = self.criterion(output, labels)
+
+        log_dict = {
+            "train_loss": {"value": loss, 
+                           "on_step": True, 
+                           "on_epoch": True,
+                           "prog_bar": True,
+                           "logger": True},
+            "lr": {
+                "value": self.optimizer.param_groups[0]['lr'],
+                "on_step": True,
+                "on_epoch": True,
+                "prog_bar": True,
+                "logger": True
+            }
+        }
+        self._logging(log_dict)
+
+        return loss
+    
+    def validation_step(self, batch, batch_idx):
+        signals, labels = batch
+
+        output = self.model(signals)
+
+        loss = self.criterion(output, labels)
+        _precision = self.precision(output, labels)
+        _recall = self.recall(output, labels)
+        _f1 = self.f1(output, labels)
+
+        log_dict = {
+            "valid_loss": {"value": loss, "on_step": True, "on_epoch": True, "prog_bar": True, "logger": True},
+            "precision": {"value": _precision, "on_step": True, "on_epoch": True, "prog_bar": True, "logger": True},
+            "recall": {"value": _recall, "on_step": True, "on_epoch": True, "prog_bar": True, "logger": True},
+            "f1": {"value": _f1, "on_step": True, "on_epoch": True, "prog_bar": True, "logger": True},
+        }
+        self._logging(log_dict)
+
+        return loss
+    
+    def test_step(self, batch, batch_idx):
+        anchors, _, _ = batch
+        anchors_out = self.model(anchors)
+        os.mkdir('/dump')
+        
+        for ith, anchor in enumerate(anchors_out):
+            anchor.save(f'/dump/emb_{ith}.pt')
+    

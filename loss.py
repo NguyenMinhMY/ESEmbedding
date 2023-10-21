@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import math
 
-class ContrastiveLoss(nn.Module):
 
+class ContrastiveLoss(nn.Module):
     def __init__(self, margin=math.cos(math.pi/5)):
         super(ContrastiveLoss, self).__init__()
 
@@ -12,12 +12,8 @@ class ContrastiveLoss(nn.Module):
 
         self.w = torch.nn.Parameter(torch.abs(torch.randn(1,)))
         self.b = torch.nn.Parameter(torch.randn(1,))
-
-
-    def forward(self, signal_list, batch_size):
-        '''
-        1-Pair Loss - Cosine
-
+    
+    def forward(self, x0, x1, y):
         cos_func = torch.nn.CosineSimilarity(dim=1)
         cosine = cos_func(x0, x1)
 
@@ -28,26 +24,20 @@ class ContrastiveLoss(nn.Module):
         loss = torch.sum(loss) / x0.size()[0]
 
         return loss
-        '''
 
-        '''
-        N-pair loss - Cosine + margin
 
-        pos_centroids = torch.stack([self.get_centroids(embs) for embs in pos_outs], dim=0) # (B,D)
-        neg_outs = torch.stack(neg_outs, dim=0) # (B,4,D)
+class ContrastiveLossNPair(nn.Module):
 
-        S_pos = self.cacl_similarity(anchors, pos_centroids, dim=1) # (B,1)
-        loss_sim = 1 - S_pos
+    def __init__(self, margin=math.cos(math.pi/5)):
+        super(ContrastiveLossNPair, self).__init__()
 
-        S_negs = self.cacl_similarity(anchors.unsqueeze(1), neg_outs, dim=2) # (B,4,1)
-        margin = self.w * self.margin + self.b
-        loss_dissims = torch.clamp(S_negs - margin, min=0.0)
+        self.margin = math.cos(math.pi/5)
 
-        loss = loss_sim + torch.max(loss_dissims, dim=1).values
-        return torch.sum(loss)/anchors.size()[0]
-        '''
+        self.w = torch.nn.Parameter(torch.abs(torch.randn(1,)))
+        self.b = torch.nn.Parameter(torch.randn(1,))
 
-        # N-pair loss - Cosine + logarit
+
+    def forward(self, signal_list, batch_size):
         loss = 0.0
         samples_per_load = int(signal_list.size()[0] / batch_size)
         for idx in range(0, batch_size):
@@ -78,3 +68,4 @@ class ContrastiveLoss(nn.Module):
             return sim
         except:
             raise f"Inputs not match dims: x0's size is {x0.size()} - x1's size is {x1.size()}"
+
