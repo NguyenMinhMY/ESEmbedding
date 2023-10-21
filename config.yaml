@@ -17,6 +17,20 @@ train_dataset:
   batch_size: 8
   shuffle: true
   num_workers: 4
+  ratio: 1.0
+  sr: ${sampling_rate}
+
+train_dataset_syn:
+  dirs:
+    angry: '.'
+    happy: '.'
+    neutral: '.'
+    sad: '.'
+    surprise: '.'
+  batch_size: 8
+  shuffle: true
+  num_workers: 4
+  ratio: 0.9
   sr: ${sampling_rate}
 
 val_dataset:
@@ -29,6 +43,7 @@ val_dataset:
   batch_size: 4 
   shuffle: true
   num_workers: 4
+  ratio: 1.0
   sr: ${sampling_rate}
 
 optimizer:

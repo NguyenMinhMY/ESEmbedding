@@ -117,8 +117,9 @@ class PLESClassification(PLESEMbedding):
         self.recall = torchmetrics.Recall(task="multiclass", average=cfg['metrics_avg_type'], num_classes=5)
         self.f1 = torchmetrics.F1Score(task="multiclass", average=cfg['metrics_avg_type'], num_classes=5)
 
-        self.train_data = ESCDataset(cfg['train_dataset'])
-        self.valid_data = ESCDataset(cfg['val_dataset'])
+        # self.train_data = ESCDataset(cfg['train_dataset'])
+        # self.train_data_syn = ESCDataset(cfg['train_dataset_syn'])
+        # self.valid_data = ESCDataset(cfg['val_dataset'])
 
     def training_step(self, batch, batch_idx):
         signals, labels = batch

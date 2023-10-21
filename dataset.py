@@ -4,7 +4,7 @@ import torch
 import librosa
 import numpy as np
 import torch.nn.functional as F
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, ConcatDataset
 
 
 class ESDataset(Dataset):
@@ -21,6 +21,7 @@ class ESDataset(Dataset):
             'sad': [],
             'surprise': []
         }
+        ratio = config.ratio
         
         for emo in config['dirs'].keys():
             
@@ -113,26 +114,28 @@ class ESCDataset(Dataset):
 
         EMO = {'angry': 0, 'happy': 1, 'neutral': 2, 'sad': 3, 'surprise': 4}
         self.samples = []
-        
-        for emo in config['dirs'].keys():
+        self.ratio = config.ratio
+        self.config = config
+        for emo in self.config['dirs'].keys():
             
             emo_dir = config['dirs'][emo]
             if not os.path.isdir(emo_dir):
                 raise FileNotFoundError(f'Cannot find the given directory: {emo_dir}')
             
             files = os.listdir(emo_dir)
-            for f in files:
-                fpath = os.path.join(emo_dir, f)
+            for i in range(0, int(len(files)*self.ratio)):
+                fpath = os.path.join(emo_dir, files[i])
                 if not os.path.isfile(fpath):
                     continue
                 self.samples.append((fpath, EMO[emo]))
         
+        
         self.loader = DataLoader(
             self, 
-            batch_size=config.batch_size, 
-            shuffle=config.shuffle,
-            num_workers=config.num_workers,
-            collate_fn=CollateClassification(config.sr),
+            batch_size=self.config.batch_size, 
+            shuffle=self.config.shuffle,
+            num_workers=self.config.num_workers,
+            collate_fn=CollateClassification(self.config.sr),
         )
 
     def __len__(self):
@@ -144,6 +147,16 @@ class ESCDataset(Dataset):
         sample = self.samples[idx]
         # return: path, emo
         return sample[0], sample[1]
+    
+    def concat2Loader(self, dataset: Dataset) -> DataLoader:
+        combined_dataset = ConcatDataset([self, dataset])
+
+        return DataLoader(combined_dataset, 
+                          batch_size=self.config.batch_size,
+                          shuffle=self.config.shuffle,
+                          num_workers=self.config.num_workers,
+                          collate_fn=CollateClassification(self.config.sr))
+    
     
 class CollateClassification:
     def __init__(self, sr):
@@ -169,4 +182,5 @@ class CollateClassification:
         labels = torch.stack(labels)
         
         return samples, labels
+
 
