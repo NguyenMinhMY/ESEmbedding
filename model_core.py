@@ -27,8 +27,11 @@ class ESClassification(nn.Module):
         
         self.emb_extractor = ESEmbedding(self.config)
         if self.config.from_pretrained:
-            self.emb_extractor.load_state_dict(self.config.emb_pretrained)
-        
+            try:
+                ckpt = torch.load(self.config.emb_pretrained, map_location=self.config.device)
+                self.emb_extractor.load_state_dict(ckpt['state_dict'])
+            except:
+                raise "Wrong path to checkpoint"
 
     def forward(self, signals):
         emb_features = self.emb_extractor(signals)

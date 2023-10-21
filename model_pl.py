@@ -110,7 +110,7 @@ class PLESClassification(PLESEMbedding):
         super(PLESClassification, self).__init__(cfg)
 
         self.cfg = cfg
-        self.model = ESClassification(cfg)
+        self.model = ESClassification(self.cfg)
 
         self.criterion = CrossEntropyLoss()
         self.precision = torchmetrics.Precision(task="multiclass", average=cfg['metrics_avg_type'], num_classes=5)
