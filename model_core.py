@@ -8,6 +8,7 @@ from transformers import (
     AutoProcessor,
     Wav2Vec2Model,
 )
+from model_pl import PLESEMbedding
 
 
 class ESClassification(nn.Module):
@@ -25,16 +26,16 @@ class ESClassification(nn.Module):
         self.out = nn.Linear(self.config.classifier.project_size,
                              self.config.classifier.num_labels)
         
-        self.emb_extractor = ESEmbedding(self.config)
+        self.emb_extractor = PLESEMbedding(self.config)
         if self.config.from_pretrained:
             try:
-                ckpt = torch.load(self.config.emb_pretrained, map_location=self.config.device)
-                self.emb_extractor.load_state_dict(ckpt['state_dict'])
+                pretrained_weights = torch.load(self.config.emb_pretrained, map_location=self.config.device)
+                self.emb_extractor.load_state_dict(pretrained_weights['state_dict'])
             except:
-                raise "Wrong path to checkpoint"
+                raise FileNotFoundError("Wrong path to checkpoint")
 
     def forward(self, signals):
-        emb_features = self.emb_extractor(signals)
+        emb_features = self.emb_extractor.model(signals)
         # emb_features: (B, 768)
         x = self.hidden_proj(emb_features)
         x = self.relu(x)
