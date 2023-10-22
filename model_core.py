@@ -12,22 +12,6 @@ from transformers import (
 
 class ESClassification(nn.Module):
     def __init__(self, config):
-        # super(ESClassification, self).__init__()
-        # self.config = config
-        # self.hidden_proj = nn.Linear(self.config.classifier.hidden_size,
-        #                              self.config.classifier.project_size)
-        
-        # self.out = nn.Linear(self.config.classifier.project_size,
-        #                      self.config.classifier.num_labels)
-        
-        # self.emb_extractor = ESEmbedding(self.config)
-        # if self.config.from_pretrained:
-        #     try:
-        #         pretrained_weights = torch.load(self.config.emb_pretrained, map_location=self.config.device)
-        #         ckpt = {k.replace('model.',''): v for k, v in pretrained_weights['state_dict'].items() if 'model' in k}
-        #         self.emb_extractor.load_state_dict(ckpt)
-        #     except:
-        #         raise FileNotFoundError("Wrong path to checkpoint")
 
         super().__init__()
 

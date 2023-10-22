@@ -105,14 +105,29 @@ class PLESEMbedding(pl.LightningModule):
             },
         }
     
-class PLESClassification(PLESEMbedding):
+class PLESClassification(pl.LightningModule):
     def __init__(self, cfg: DictConfig):
-        super(PLESClassification, self).__init__(cfg)
+        super(PLESClassification, self).__init__()
 
         self.cfg = cfg
         self.model = ESClassification(self.cfg)
 
-        self.criterion = CrossEntropyLoss()
+        self.optimizer = AdamW(
+            params=self.parameters(),
+            lr=cfg.optimizer.lr,
+            betas=cfg.optimizer.betas,
+            weight_decay=cfg.optimizer.weight_decay,
+            eps=1e-9,
+        )
+
+        self.scheduler = NoamScheduler(
+            self.optimizer,
+            factor=cfg.optimizer.factor,
+            model_size=cfg.optimizer.model_size,
+            warmup_steps=cfg.optimizer.warmup_steps,
+        )
+
+        self.criterion = CrossEntropyLoss(torch.tensor(cfg['loss_weights']))
         self.precision = torchmetrics.Precision(task="multiclass", average=cfg['metrics_avg_type'], num_classes=5)
         self.recall = torchmetrics.Recall(task="multiclass", average=cfg['metrics_avg_type'], num_classes=5)
         self.f1 = torchmetrics.F1Score(task="multiclass", average=cfg['metrics_avg_type'], num_classes=5)
@@ -121,6 +136,7 @@ class PLESClassification(PLESEMbedding):
         signals, labels = batch
 
         output = self.model(signals)
+
         loss = self.criterion(output, labels)
 
         log_dict = {
@@ -168,4 +184,26 @@ class PLESClassification(PLESEMbedding):
         
         for ith, anchor in enumerate(anchors_out):
             anchor.save(f'/dump/emb_{ith}.pt')
+
+    def _logging(self, logs: dict):
+        for key in logs:
+            self.log(
+                key,
+                logs[key]['value'],
+                logs[key]['on_step'],
+                logs[key]['on_epoch'],
+                logs[key]['prog_bar'],
+                logs[key]['logger'],
+            )
+
+    def configure_optimizers(self):
+        return {
+            "optimizer": self.optimizer,
+            "lr_scheduler": {
+                "scheduler": self.scheduler,
+                "interval": "step",
+                "frequency": 1,
+                "monitor": "val_loss",
+            },
+        }
     

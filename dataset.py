@@ -145,7 +145,6 @@ class ESCDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.item()
         sample = self.samples[idx]
-        # return: path, emo
         return sample[0], sample[1]
     
     def concat2Loader(self, dataset: Dataset) -> DataLoader:
