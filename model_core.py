@@ -15,10 +15,10 @@ class ESClassification(nn.Module):
         super(ESClassification, self).__init__()
         self.config = config
 
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout2d(self.config.classifier.dropout)
-        self.softmax = nn.Softmax(dim=1)
-        self.max_pool = nn.MaxPool2d(kernel_size=self.config.classifier.pooling_kernel_size)
+        # self.relu = nn.ReLU()
+        # self.dropout = nn.Dropout2d(self.config.classifier.dropout)
+        # self.softmax = nn.Softmax(dim=1)
+
         self.hidden_proj = nn.Linear(self.config.classifier.hidden_size,
                                      self.config.classifier.project_size)
         
@@ -37,15 +37,19 @@ class ESClassification(nn.Module):
     def forward(self, signals):
         emb_features = self.emb_extractor(signals)
         # emb_features: (B, 768)
+        # x = self.hidden_proj(emb_features)
+        # x = self.relu(x)
+        # x = self.dropout(x)
+
+        # x = self.out(x)
+        # x = self.relu(x)
+        # x = self.dropout(x)
+
+        # return self.softmax(x)
         x = self.hidden_proj(emb_features)
-        x = self.relu(x)
-        x = self.dropout(x)
-
         x = self.out(x)
-        x = self.relu(x)
-        x = self.dropout(x)
 
-        return self.softmax(x)
+        return x
 
         
 
