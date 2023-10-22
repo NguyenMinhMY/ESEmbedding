@@ -12,47 +12,68 @@ from transformers import (
 
 class ESClassification(nn.Module):
     def __init__(self, config):
-        super(ESClassification, self).__init__()
-        self.config = config
-
-        # self.relu = nn.ReLU()
-        # self.dropout = nn.Dropout2d(self.config.classifier.dropout)
-        # self.softmax = nn.Softmax(dim=1)
-
-        self.hidden_proj = nn.Linear(self.config.classifier.hidden_size,
-                                     self.config.classifier.project_size)
+        # super(ESClassification, self).__init__()
+        # self.config = config
+        # self.hidden_proj = nn.Linear(self.config.classifier.hidden_size,
+        #                              self.config.classifier.project_size)
         
-        self.out = nn.Linear(self.config.classifier.project_size,
-                             self.config.classifier.num_labels)
+        # self.out = nn.Linear(self.config.classifier.project_size,
+        #                      self.config.classifier.num_labels)
         
-        self.emb_extractor = ESEmbedding(self.config)
-        if self.config.from_pretrained:
-            try:
-                pretrained_weights = torch.load(self.config.emb_pretrained, map_location=self.config.device)
-                ckpt = {k.replace('model.',''): v for k, v in pretrained_weights['state_dict'].items() if 'model' in k}
-                self.emb_extractor.load_state_dict(ckpt)
-            except:
-                raise FileNotFoundError("Wrong path to checkpoint")
+        # self.emb_extractor = ESEmbedding(self.config)
+        # if self.config.from_pretrained:
+        #     try:
+        #         pretrained_weights = torch.load(self.config.emb_pretrained, map_location=self.config.device)
+        #         ckpt = {k.replace('model.',''): v for k, v in pretrained_weights['state_dict'].items() if 'model' in k}
+        #         self.emb_extractor.load_state_dict(ckpt)
+        #     except:
+        #         raise FileNotFoundError("Wrong path to checkpoint")
+
+        super().__init__()
+
+        self.sr = config['sampling_rate']
+        self.device = config['device']
+
+        processor = AutoProcessor.from_pretrained(config['pretrained'])
+        pretrained_model = AutoModel.from_pretrained(config['pretrained'])
+        hidden_size = pretrained_model.config.hidden_size
+
+        self.processor = processor
+        self.feature_extractor = pretrained_model.feature_extractor
+        self.feature_projection = pretrained_model.feature_projection
+        self.encoder = pretrained_model.encoder
+
+        self.cls_token = nn.Parameter(torch.randn(1, 1, hidden_size))
+
+        self.proj_out = nn.Linear(hidden_size, config['classifier']['num_labels'])
 
     def forward(self, signals):
-        emb_features = self.emb_extractor(signals)
-        # emb_features: (B, 768)
-        # x = self.hidden_proj(emb_features)
-        # x = self.relu(x)
-        # x = self.dropout(x)
+        """
+            signal: (B, T)
+            output: (B, D)
+        """
+        batch_size, _ = signals.shape
+        processed_signal = self.processor(
+            signals,
+            sampling_rate = self.sr,
+            return_tensors = 'pt'
+        ).get('input_values').squeeze(0).to(self.device)
 
-        # x = self.out(x)
-        # x = self.relu(x)
-        # x = self.dropout(x)
+        features = self.feature_extractor(processed_signal)
+        features = features.transpose(1, 2)
+        hidden_states, features = self.feature_projection(features)
 
-        # return self.softmax(x)
-        x = self.hidden_proj(emb_features)
-        x = self.out(x)
+        cls_tokens = repeat(self.cls_token, '1 1 d -> b 1 d', b = batch_size)
+        hidden_states = torch.cat((cls_tokens, hidden_states), dim = 1)
 
-        return x
+        hidden_states = self.encoder(hidden_states).last_hidden_state
+        cls_emb = hidden_states[:, 0]
 
-        
+        output = self.proj_out(cls_emb)
 
+        return output.squeeze(1)
+
+    
 
 class ESEmbedding(nn.Module):
     
