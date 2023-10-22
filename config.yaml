@@ -4,7 +4,7 @@ contrastive_margin: 1.0
 device: 'cuda:0'
 
 metrics_avg_type: 'micro'
-loss_weights: [0.9, 2.3, 0.3, 4.5, 5.1]
+loss_weights: [1, 1, 1, 1, 1]
 
 train_dataset:
   dirs:
